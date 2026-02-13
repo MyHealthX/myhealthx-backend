@@ -1,15 +1,18 @@
-const { protect } = require("../middleware/authMiddleware");
 const express = require("express");
 const router = express.Router();
-const controller = require("../controllers/patientController");
+const Patient = require("../models/Patient");
+const { protect } = require("../middleware/authMiddleware");
 
-router.post("/", controller.createPatient);
-router.get("/", controller.getPatients);
-router.get("/:id", controller.getPatientById);
-router.put("/:id", controller.updatePatient);
-router.delete("/:id", controller.deletePatient);
+// 🔐 PROTECTED ROUTE
+router.get("/", protect, async (req, res) => {
+  const patients = await Patient.find();
+  res.json(patients);
+});
 
-router.get("/emergency/:id", controller.emergencyPage);
-router.get("/qr/:id", controller.generateQR);
+// Create patient (public for now)
+router.post("/", async (req, res) => {
+  const patient = await Patient.create(req.body);
+  res.status(201).json(patient);
+});
 
 module.exports = router;
