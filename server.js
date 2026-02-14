@@ -12,56 +12,31 @@ const patientRoutes = require("./routes/patientRoutes");
 
 const app = express();
 
-// ================= MIDDLEWARES =================
+// ===== Middlewares =====
 app.use(cors());
 app.use(express.json());
 
-// ================= DATABASE =================
+// ===== Database =====
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log("MongoDB Error:", err));
 
-// ================= ROOT =================
+// ===== Root =====
 app.get("/", (req, res) => {
   res.send("MyHealth X Backend Running 🚀");
 });
 
-// ======================================================
-// ================= AUTH MIDDLEWARE =====================
-// ======================================================
-const protect = async (req, res, next) => {
-  try {
-    const header = req.headers.authorization;
+// ==================================================
+// ================= AUTH ROUTES ====================
+// ==================================================
 
-    if (!header || !header.startsWith("Bearer")) {
-      return res.status(401).json({ message: "Not authorized" });
-    }
-
-    const token = header.split(" ")[1];
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    req.user = await User.findById(decoded.id).select("-password");
-
-    if (!req.user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Token failed" });
-  }
-};
-
-// ======================================================
-// ================= REGISTER ============================
-// ======================================================
+// REGISTER
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
+    if (!email || !password || !name) {
       return res.status(400).json({ message: "All fields required" });
     }
 
@@ -94,14 +69,13 @@ app.post("/api/auth/register", async (req, res) => {
     res.status(201).json({
       message: "Registration successful. Please verify your email.",
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// ======================================================
-// ================= VERIFY EMAIL ========================
-// ======================================================
+// VERIFY EMAIL
 app.get("/api/auth/verify", async (req, res) => {
   try {
     const { token } = req.query;
@@ -122,14 +96,13 @@ app.get("/api/auth/verify", async (req, res) => {
     await user.save();
 
     res.send("Email verified successfully. You can now login.");
+
   } catch (error) {
     res.status(500).send("Verification failed.");
   }
 });
 
-// ======================================================
-// ================= LOGIN ===============================
-// ======================================================
+// LOGIN
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -160,26 +133,26 @@ app.post("/api/auth/login", async (req, res) => {
       message: "Login successful",
       token,
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// ======================================================
-// ================= PROFILE =============================
-// ======================================================
+// Protected Profile
+const { protect } = require("./middleware/authMiddleware");
+
 app.get("/api/auth/profile", protect, async (req, res) => {
   res.json(req.user);
 });
 
-// ======================================================
-// ================= PATIENT ROUTES ======================
-// ======================================================
+// Patient Routes
 app.use("/api/patients", patientRoutes);
 
-// ======================================================
-// ================= START SERVER ========================
-// ======================================================
+// ==================================================
+// ================= START SERVER ===================
+// ==================================================
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {

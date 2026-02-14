@@ -1,17 +1,13 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  createPatient,
-  getMyPatient,
-} = require("../controllers/patientController");
-
 const { protect } = require("../middleware/authMiddleware");
+const patientController = require("../controllers/patientController");
 
-// Create patient profile
-router.post("/", protect, createPatient);
+// Create Patient
+router.post("/", protect, patientController.createPatient);
 
-// Get logged-in patient profile
-router.get("/me", protect, getMyPatient);
+// Get My Patient
+router.get("/me", protect, patientController.getMyPatient);
 
 module.exports = router;
