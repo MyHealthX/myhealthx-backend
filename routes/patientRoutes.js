@@ -2,12 +2,12 @@ const express = require("express");
 const router = express.Router();
 
 const { protect } = require("../middleware/authMiddleware");
+const { requireActiveSubscription } = require("../middleware/subscriptionMiddleware");
 const patientController = require("../controllers/patientController");
 
-// Create Patient
 router.post("/", protect, patientController.createPatient);
 
-// Get My Patient
-router.get("/me", protect, patientController.getMyPatient);
+// Now only active users can view profile
+router.get("/me", protect, requireActiveSubscription, patientController.getMyPatient);
 
 module.exports = router;
