@@ -38,6 +38,7 @@ const userSchema = new mongoose.Schema(
     emergencyId: {
       type: String,
       unique: true,
+      sparse: true,
     },
 
     // Email Verification
