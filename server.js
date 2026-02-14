@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
 const User = require("./models/User");
+const patientRoutes = require("./routes/patientRoutes");
 const { sendVerificationEmail } = require("./services/emailService");
 
 const app = express();
@@ -45,7 +46,6 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
     const user = new User({
@@ -55,19 +55,18 @@ app.post("/api/auth/register", async (req, res) => {
       role: "patient",
       isVerified: false,
       emailVerificationToken: verificationToken,
-      emailVerificationExpires: Date.now() + 60 * 60 * 1000, // 1 hour
+      emailVerificationExpires: Date.now() + 60 * 60 * 1000,
       subscriptionStatus: "inactive",
       isActive: true,
     });
 
     await user.save();
-
-    // Send verification email
     await sendVerificationEmail(email, verificationToken);
 
     res.status(201).json({
       message: "Registration successful. Please verify your email.",
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
@@ -95,6 +94,7 @@ app.get("/api/auth/verify", async (req, res) => {
     await user.save();
 
     res.send("Email verified successfully. You can now login.");
+
   } catch (error) {
     res.status(500).send("Verification failed.");
   }
@@ -107,19 +107,16 @@ app.post("/api/auth/login", async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user) {
+    if (!user)
       return res.status(400).json({ message: "User not found" });
-    }
 
-    if (!user.isVerified) {
+    if (!user.isVerified)
       return res.status(400).json({ message: "Please verify your email first" });
-    }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isMatch) {
+    if (!isMatch)
       return res.status(400).json({ message: "Invalid password" });
-    }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
@@ -131,35 +128,27 @@ app.post("/api/auth/login", async (req, res) => {
       message: "Login successful",
       token,
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
 // ========================================================
-// ================= PROTECTED ROUTE EXAMPLE ==============
+// ================= PROFILE ROUTE ========================
 // ========================================================
 
-const authMiddleware = (req, res, next) => {
-  const header = req.headers.authorization;
+const { protect } = require("./middleware/authMiddleware");
 
-  if (!header) return res.status(401).json({ message: "No token provided" });
-
-  const token = header.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: "Invalid token" });
-  }
-};
-
-app.get("/api/auth/profile", authMiddleware, async (req, res) => {
-  const user = await User.findById(req.user.id).select("-password");
-  res.json(user);
+app.get("/api/auth/profile", protect, async (req, res) => {
+  res.json(req.user);
 });
+
+// ========================================================
+// ================= PATIENT ROUTES =======================
+// ========================================================
+
+app.use("/api/patients", patientRoutes);
 
 // ========================================================
 // ================= START SERVER =========================
